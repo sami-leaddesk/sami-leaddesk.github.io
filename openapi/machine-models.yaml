@@ -1,0 +1,1039 @@
+openapi: "3.0.0"
+info:
+  title: Machine Models
+  description: Design Machine models for new agent UI
+  version: 0.0.1
+
+paths:
+  /dummy:
+    get:
+      summary: ignore
+      responses:
+        204:
+          description: done
+
+components:
+  schemas:
+    PhoneNumber:
+      description: Model of contact's single phone number. Tried to keep this minimalistict and only get the fields that are required by the UI
+      properties:
+        id: 
+          description: Clientwise unique phone number id
+          type: integer
+          example: 1234
+        number:
+          description: Phone number
+          type: string
+          example: '+35840123456789'
+        label:
+          description: Number's label given on import phase.
+          type: string
+          example: 'Mobile'
+        finalized:
+          description: If the number is finalized it won't be called again automatically (e.g. progressive mode). 
+          type: boolean
+          example: false
+
+    OtherInfo:
+      properties:
+        id: 
+          description: other info index
+          type: integer
+          example: 2
+          minimum: 1
+        label:
+          description: Other info field's label
+          type: string
+          maxLength: 100
+          example: CRM identifier
+        value:
+          description: Other info field's value
+          type: string
+          maxLength: 255
+          example: 'C9922637'
+
+    Address:
+      description: Generic street address model
+      properties:
+        country:
+          type: string
+          example: Finland
+        city:
+          type: string
+          example: Lappeenranta
+        postal_code:
+          type: string
+          example: '53850'
+        street_address:
+          type: string
+          example: 'Laserkatu 6'
+
+    CompanyStatus:
+      description: Company's current status
+      properties:
+        id: 
+          type: integer
+        name:
+          description: Name of the status
+          type: string
+          example: 'New'
+        finalized:
+          description: If finalized then company is not visible in the B2B view by default
+          type: boolean
+          example: false
+
+    CompanyLite:
+      description: Company model when b2b is not enabled or contact does not have a real company relation
+      properties:
+        name: 
+          description: Company's name
+          type: string
+          example: Company XYZ
+        vatin: 
+          description: Company's vatin (https://en.wikipedia.org/wiki/VAT_identification_number)
+          type: string
+          example: FI99999999
+
+    Company:
+      properties:
+        id:
+          description: Clientwise unique company id
+          type: integer
+          example: 2345
+        name: 
+          description: Company's name
+          type: string
+          example: Company XYZ
+        vatin: 
+          description: Company's vatin (https://en.wikipedia.org/wiki/VAT_identification_number)
+          type: string
+          example: FI99999999
+        www:
+          description: Company's homepage or other www address
+          type: string
+          pattern: url
+          example: 'https://company.xyz/'
+        status:
+          $ref: '#/components/schemas/CompanyStatus'
+        address:
+          $ref: '#/components/schemas/Address'
+        comment:
+          description: Company's comment
+          type: string
+          maxLength: 65536
+        reserved_to:
+          description: Agent ID if reserved to some agent or null otherwise
+          type: integer
+          example: 83749396886
+          nullable: true
+        last_result:
+          description: Information of the last call result that happened to a contact of this company
+          properties:
+            id:
+              description: Result's id
+              type: integer
+              example: 1
+            name:
+              description: Result's name
+              type: string
+              example: Deal
+            time:
+              description: when it happened
+              type: string
+              format: date-time
+              example: '2017-07-21T17:32:28+0200'
+        other_infos:
+          description: 35 customizable fields. All fields will be included even if they are empty.
+          type: array
+          items:
+            $ref: '#/components/schemas/OtherInfo'
+
+    Contact:
+      description: Representation of LeadDesk contact
+      properties:
+        id:
+          description: Clientwise unique contact id
+          type: integer
+          example: 123
+        first_name:
+          type: string
+          example: John
+          maxLength: 100
+        last_name:
+          type: string
+          example: Doe
+          maxLength: 100
+        ssc:
+          description: Social Security Code or some other unique contact identifier
+          type: string
+          maxLength: 100
+          example: 130751-953X
+        title:
+          description: Job title
+          type: string
+          maxLength: 100
+        www:
+          description: Contact's homepages or some other related URL
+          type: string
+          pattern: url
+          maxLength: 255
+          example: 'https://homepages.com/john.doe/'
+        birth_year:
+          description: Contact's year of birth. TODO! confusing since string
+          type: string
+          maxLength: 100
+          example: 1951
+        gender:
+          description: Contact's gender. Notice that this is free text so clients can use whatever format or pattern they want.
+          type: string
+          maxLength: 100
+          example: Male
+        comment:
+          description: Contact's comment field
+          type: string
+          maxLength: 65536
+        reserved_to:
+          description: Agent ID if reserved to some agent or null otherwise
+          type: integer
+          example: 83749396886
+          nullable: true
+        contact_list:
+          nullable: true
+          properties:
+            id: 
+              description: Contact list id
+              type: integer
+            name:
+              description: Name of the contact list
+              type: string
+              example: 'Priority contacts'
+        address:
+          $ref: '#/components/schemas/Address'
+        phone_numbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneNumber'
+        email:
+          description: Contact's email address
+          type: string
+          format: email
+          example: john.doe@emaildomain.com
+        company:
+          oneOf:
+            - $ref: '#/components/schemas/Company'
+            - $ref: '#/components/schemas/CompanyLite'
+        other_infos:
+          description: 35 customizable fields. All fields will be included even if they are empty.
+          type: array
+          items:
+            $ref: '#/components/schemas/OtherInfo'      
+
+    OrderProductField:
+      description: Ordered product's field model
+      properties:
+        id: 
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+            - text
+            - textarea
+            - static
+            - date
+            - multiselect
+            - dropdown
+        values:
+          type: array
+          items:
+            type: string
+
+    OrderProduct:
+      description: Ordered product
+      properties:
+        id:
+          description: Product id
+          type: integer
+        name:
+          description: Product's name
+          type: string
+        free_price:
+          description: Whether the price is modifiable or not
+          type: boolean
+        price:
+          description: Sales price of single unit
+          type: number
+          example: 0.60
+        quantity:
+          description: How many units were ordered
+          type: integer
+          minimum: 1
+        fields:
+          description: Product's field properties
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderProductField'
+
+    Order:
+      description: Representation of LeadDesk order
+      properties:
+        id:
+          type: integer
+          example: 17347          
+        invoice:
+          description: Invoice related contact information
+          properties:
+            phone_number:
+              type: string
+              maxLength: 100
+            first_name:
+              type: string
+              maxLength: 100
+            last_name:
+              type: string
+              maxLength: 100
+            company_name:
+              type: string
+              maxLength: 100
+            company_vatin:
+              type: string
+              maxLength: 100
+            title:
+              type: string
+              maxLength: 100
+            email:
+              type: string
+              maxLength: 255
+            gender:
+              type: string
+              maxLength: 255
+            ssc:
+              type: string
+              maxLength: 255
+            www:
+              type: string
+              format: url
+              maxLength: 255
+            address:
+              $ref: '#/components/schemas/Address'
+        delivery:
+          description: Devivery related contact information
+          properties:
+            phone_number:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+            company_name:
+              type: string
+            title:
+              type: string
+            email:
+              type: string
+            address:
+              $ref: '#/components/schemas/Address'
+        products:
+          description: Ordered products
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderProduct'
+        voice_receipt_url: 
+          description: Voice receipt's URL or null if no receipt
+          type: string
+          format: url
+          nullable: true
+          example: 'https://recording.server/path/receipt-1234.mp3'
+        created_at:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28+0200'
+        user:
+          description: User who created the order
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        campaign:
+          description: Campaign in which this order was made
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        call:
+          description: Call in which this order was made. It's possible to have orders without calls.
+          nullable: true
+          properties:
+            id:
+              type: integer
+            comment:
+              type: string
+            recording_url:
+              type: string
+        state:
+          description: Orders's state. Can be null if state is not set.
+          nullable: true
+          properties:
+            id: 
+              type: integer
+            name:
+              type: string
+        other_infos:
+          description: 6 customizable fields. All fields will be included even if they are empty.
+          type: array
+          items:
+            $ref: '#/components/schemas/OtherInfo'      
+
+    Callback:
+      properties:
+        id:
+          type: integer
+        phone: 
+          description: Phone number that should be called
+          type: string
+          maxLength: 100
+        comment:
+          type: string
+          maxLength: 65536
+        type:
+          description: Type of the callback. Private is assigned to agent. Public is assigned to any agent on the same campaign.
+          type: string
+          example: "public"
+          enum:
+            - private
+            - public
+        expires_at:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28+0200'
+        campaign:
+          description: Campaign of the callback
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        assigned_user:
+          description: User who is responsible of the callback if type=private
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        call:
+          description: Call in which this callback was made
+          nullable: true
+          properties:
+            id:
+              type: integer
+        contact:
+          $ref: '#/components/schemas/Contact'
+
+    Call:
+      description: Representation of LeadDesk call
+      properties:
+        id:
+          type: integer
+        phone_number:
+          description: Phone number that was called
+          type: string
+          format: phone
+        campaign:
+          description: Campaign in which the call was made
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        record_file_url:
+          description: Call recording file url or null
+          nullable: true
+          type: string
+          format: url
+        comment:
+          description: Call comment
+          type: string
+        direction:
+          description: Call direction
+          type: string
+          example: out
+          enum:
+            - in
+            - out
+        caller:
+          description: User who made the call
+          properties:
+            id:
+              type: integer
+            name:
+              type: string        
+        answered:
+          description: Was the call answered
+          type: boolean
+          example: true
+        called_at:
+          description: time when call was made. Notice that this is not necessarily the time when this database entry was created.
+          type: string
+          format: date-time
+        # TODO: Do we need this accurate times, or would it be enough to have ring_time, talk_time, finalization_time (in seconds)
+        ringing_started_at:
+          description: time when call started ringing {TODO}
+          type: string
+          format: date-time
+        ringing_ended_at:
+          description: time when call stopped ringing
+          type: string
+          format: date-time
+        connected_at:
+          description: time when call was connected
+          type: string
+          format: date-time
+        disconnected_at:
+          description: time when call was disconnected
+          type: string
+          format: date-time
+        finalized_at:
+          description: time when call was finalized
+          type: string
+          format: date-time
+        result:
+          $ref: "#/components/schemas/Result"
+        contact:
+          $ref: "#/components/schemas/Contact"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+
+    Campaign:
+      description: Representation of LeadDesk campaign
+      properties:
+        id:
+          type: integer
+        name:
+          description: Campaign name
+          type: string
+        description:
+          description: Campaign description
+          type: string
+        office:
+          description: Campaign office
+          type: string
+        call_methods:
+          properties:
+            progressive:
+              properties:
+                enabled:
+                  description: Is progressive call tab enabled.
+                  type: boolean
+                mode:
+                  description: In which mode the progressive call flow works
+                  type: string
+                  enum:
+                    - full-automatic
+                    - semi-automatic
+                    - selectable
+                allow_remove:
+                  description: Whether to allow removing phone numbers during progressive call flow
+                  type: boolean
+                skip_number_penalty:
+                  description: Use waiting period before agent can select next customer in progressive calling. If next customer is selected too quickly then waiting period is increased.
+                  type: boolean
+                preview_leadapp_url:
+                  description: Contact preview LeadApp address
+                  nullable: true
+                  type: string
+                  format: url
+                ring_time_limit:
+                  description: Maximum ringing time in seconds for progressive call without pause. (Next number in list is dialed after timeout). 0 = off 
+                  type: integer
+                select_result_on_remove:
+                  description: Show call ending reason dialog when removing customer from list
+                  type: boolean
+            contact_list:
+              properties:
+                enabled:
+                  description: Is contact list tab enabled.
+                  type: boolean
+                view:
+                  description: selected table view/format
+                  # TODO: Maybe it would be better to return the whole table structure here instead of the name - but we'll see
+                  type: string
+            b2b:
+              properties:
+                enabled:
+                  description: Is B2B tab enabled.
+                  type: boolean
+            manual:
+              properties:
+                enabled:
+                  description: Is manual call tab enabled.
+                  type: boolean
+            external_phone:
+              properties:
+                enabled:
+                  description: Is is allowed to log external calls.
+                  type: boolean
+        settings:
+          description: Miscellaneous settings that don't have a better location
+          properties:
+            selectable_contact_list:
+              description: Show agent contact list selector (agents can select a contact list from all lists assigned to the current campaign)
+              type: boolean
+            hide_delivery:
+              description:  Hide delivery address section from call dialog 
+              type: boolean
+            default_primary_tab:
+              # TODO: Not sure how this maps to new call dialog
+              description: Default campaign tab
+              type: string
+            default_order_tab:
+              # TODO: Not sure how this maps to new call dialog
+              description: Default campaign tab
+              type: string
+            session_timeout:
+              description: Agent session timeout (maximum time that agent can be passive)
+              type: integer
+            voice_receipt_mandatory:
+              description: Whether voice receipt is mandatory before submitting an order or not 
+              type: boolean
+        recording:
+          properties:
+            mode:
+              type: string
+              enum:
+                - both
+                - agent
+                - voice_receipt
+        callbacks:
+          properties:
+            allow_delegation:
+              description: Agent can create and transfer callbacks to other agents 
+              type: boolean
+            minimum_date: 
+              description: Minimum date allowed for new callbacks (inclusive)
+              type: string
+              format: date
+            maximum_date: 
+              description: Maximum date allowed for new callbacks (inclusive)
+              type: string
+              format: date
+            minimum_time: 
+              description: Minimum time of day allowed for new callbacks (inclusive)
+              type: string
+              format: time
+            maximum_time: 
+              description: Minimum time of day allowed for new callbacks (inclusive)
+              type: string
+              format: time
+            allow_types:
+              type: string
+              enum: 
+                - all
+                - private
+                - public
+        predictive:
+          properties:
+            automatic_answer:
+              description: Automatic answer is forced to agents for predictive calls
+              type: boolean
+        b2b:
+          properties:
+            company_statuses:
+              type: array
+              items:
+                properties:
+                  id: 
+                    type: integer
+                  name:
+                    type: string
+        inbound:
+          properties:
+            automatic_answer_queue:
+              description: Automatic answer is forced to agents for queue calls
+              type: boolean
+            automatic_answer_direct:
+              description: Automatic answer is forced to agents for direct
+              type: boolean
+            blending:
+              description: Agent can receive inbound queue calls in any call tab
+              type: boolean
+        leadapps:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampaignLeadApp'
+        reports:
+          description: All the reports attached to this campaign
+          properties:
+            call_view:
+              type: string
+              nullable: true
+            away_view:
+              type: string
+              nullable: true
+            call_dialog:
+              type: string
+              nullable: true
+            sidebar:
+              type: string
+              nullable: true
+        contact_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactField'
+        manuscript:
+          description: Manuscript attached to campaign
+          properties:
+            id:
+              type: integer
+        products:
+          description: Products attached to campaign
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        product_groups:
+          description: Product groups attached to campaign
+          type: array
+          items:
+            properties:
+              id: 
+                type: integer
+              name:
+                type: string
+              products:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        # NOTE: I don't think agent needs to know about other users
+        #users:
+        contact_lists:
+          description: Contact lists attached to campaign
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+              name: 
+                type: string
+              weight:
+                type: integer
+        results:
+          description: Call results available in campaign
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/ResultGroup'
+              - $ref: '#/components/schemas/Result'            
+            discriminator:
+              propertyName: object
+
+    CampaignLeadApp:
+      description: Campaigns leadapp
+      properties:
+        name:
+          type: string
+          nullable: true
+        location:
+          type: string
+          enum:
+            - call_dialog_tab
+            - call_hook
+            - manual_tab
+            - inbound_tab
+        url:
+          type: string
+          format: url
+
+    ContactField:
+      description: Campaign's contact field configuration
+      properties:
+        id:
+          description: Field identifier
+          type: string
+          enum:
+            - phone
+            - ...
+          example: phone
+        name:
+          description: Field's customized or localized name
+          type: string
+        type:
+          description: Field's type. Define whether field is text or dropdown etc
+          type: string
+          example: text
+          enum:
+          - text
+          - dropdown
+        values:
+          description: If field is dropdown then this property defines possible values.
+          nullable: true
+          type: array
+          items:
+            type: string
+        hidden:
+          description: Makes field invisible to agent
+          type: boolean
+        readonly:
+          description: Makes field non-editable
+          type: boolean
+        validator:
+          description: Field validator is an UI feature and enforce field's value to specific format before it can be used to create/modify an order.
+          nullable: true
+          properties:
+            type:
+              type: string
+              example: email
+            mandatory_save:
+              description: Whether the validation is required also when saving contact details
+              type: boolean
+
+    ResultGroup:
+      properties:
+        object:
+          type: string
+          example: group
+        name:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Result'         
+
+    Product:
+      properties:
+        id:
+          description: Product id
+          type: integer
+        name:
+          description: Product name
+          type: string
+        description:
+          description: Product description
+          type: string
+        free_price:
+          description: Whether the price is modifiable by an agent or not
+          type: boolean
+        price:
+          description: Initial price of single unit
+          type: number
+          example: 0.60
+        fields:
+          description: Product's field properties
+          type: array
+          # NOTE: Fields will be automatically ordered in the right order
+          items:
+            properties:
+              id: 
+                type: integer
+              name:
+                type: string
+              mandatory:
+                description: whether the fields is mandatory to make an order (cannot be empty)
+                type: boolean
+              type:
+                type: string
+                enum:
+                  - text
+                  - textarea
+                  - static
+                  - date
+                  - multiselect
+                  - dropdown
+              values:
+                description: Predefined value(s) for field. Some types will only have single value.
+                type: array
+                items:
+                  type: string          
+
+    Phonebook:
+      properties:
+        groups:
+          description: Phonebook numbers
+          properties:
+            name:
+              type: string
+            numbers:
+              type: array
+              items:
+                properties:
+                  name:
+                    type: string
+                  number:
+                    type: string
+        agents:
+          description: Available agents
+          type: array
+          items:
+            properties:
+              id: 
+                type: integer
+              name:
+                type: string
+              number:
+                type: string
+              # TODO: need availability status here?
+
+    ContactList:
+      properties:
+        id:
+          description: Contact list id
+          type: integer
+        name:
+          description: Contact list name
+          type: string
+
+    SmsMessageTemplate:
+      description: SMS message template
+      properties:
+        object:
+          type: string
+          example: sms
+        id:
+          type: integer
+        sender:
+          description: Sender name of phone number
+          type: string
+        to:
+          description: destination phone number
+          type: string
+        message:
+          description: SMS message body
+          type: string
+
+    EmailMessageTemplate:
+      description: Email message template
+      properties:
+        object:
+          type: string
+          example: email
+        id:
+          type: integer
+        sender:
+          description: Sender email address
+          type: string
+        to:
+          description: destination email addresses
+          type: array
+          items:
+            type: string
+        cc:
+          description: destination cc email addresses
+          type: array
+          items:
+            type: string
+        bcc:
+          description: destination bcc email addresseses
+          type: array
+          items:
+            type: string
+        message:
+          description: Email message body
+          type: string
+        attachments:
+          type: array
+          items:
+            properties:
+              id: 
+                type: integer
+              filename:
+                type: string
+              size:
+                description: size in bytes
+                type: integer
+
+    Session:
+      description: Session information for the new UI
+      properties:
+        user:
+          properties:
+            id:
+              description: User id
+              type: integer
+            name:
+              description: User name
+              type: string
+            username:
+              description: User username
+              type: string
+            office:
+              description: User office
+              nullable: true
+              type: string
+            email:
+              type: string
+              format: email
+        client:
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            # TODO: no auth here. Let's try to avoid it as far as possible
+        settings:
+          description: Settings that are needed by the UI or can affect how the UI behaves
+          properties:
+            language:
+              description: "ISO 639-1 language code (https://en.wikipedia.org/wiki/ISO_639-1)"
+              type: string
+              example: 'fi'
+            time_zone:
+              type: string
+              example: 'Europe/Helsinki'
+            currency:
+              properties:
+                name:
+                  type: string
+                  example: Euro
+                symbol:
+                  type: string
+                  example: €
+                code:
+                  type: string
+                  example: EUR
+            date_format:
+              type: string
+              example: d.M.yyyy
+            time_format:
+              type: string
+              example: H:mm
+
+    Result:
+      description: LeadDesk call result but only with data that Agent should need from it
+      properties:
+        object: 
+          type: string
+          example: result
+        id:
+          type: integer
+          example: 1
+        name: 
+          type: string
+          example: "Not selected"
+        transfer:
+          description: Destination where call should be transferred if this result is selected
+          type: string
+          nullable: true
+          example: '+358401234567'
+        blacklist:
+          description: Whether this result will blacklist the contact
+          type: boolean
+          example: false
+        shortcut_key:
+          description: Shortcut key combination
+          type: string
+          example: "F4"
+        messages:
+          properties:
+            automatic:
+              description: Whether to send templates automatically or let agent modify them before sending
+              type: boolean
+            templates:
+              type: array
+              items:
+                anyOf:
+                  - $ref: '#/components/schemas/SmsMessageTemplate'
+                  - $ref: '#/components/schemas/EmailMessageTemplate'
