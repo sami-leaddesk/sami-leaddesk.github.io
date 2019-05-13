@@ -17,7 +17,7 @@ components:
     PhoneNumber:
       description: Model of contact's single phone number. Tried to keep this minimalistict and only get the fields that are required by the UI
       properties:
-        id: 
+        id:
           description: Clientwise unique phone number id
           type: integer
           example: 1234
@@ -30,13 +30,13 @@ components:
           type: string
           example: 'Mobile'
         finalized:
-          description: If the number is finalized it won't be called again automatically (e.g. progressive mode). 
+          description: If the number is finalized it won't be called again automatically (e.g. progressive mode).
           type: boolean
           example: false
 
     OtherInfo:
       properties:
-        id: 
+        id:
           description: other info index
           type: integer
           example: 2
@@ -71,7 +71,7 @@ components:
     CompanyStatus:
       description: Company's current status
       properties:
-        id: 
+        id:
           type: integer
         name:
           description: Name of the status
@@ -85,11 +85,11 @@ components:
     CompanyLite:
       description: Company model when b2b is not enabled or contact does not have a real company relation
       properties:
-        name: 
+        name:
           description: Company's name
           type: string
           example: Company XYZ
-        vatin: 
+        vatin:
           description: Company's vatin (https://en.wikipedia.org/wiki/VAT_identification_number)
           type: string
           example: FI99999999
@@ -100,11 +100,11 @@ components:
           description: Clientwise unique company id
           type: integer
           example: 2345
-        name: 
+        name:
           description: Company's name
           type: string
           example: Company XYZ
-        vatin: 
+        vatin:
           description: Company's vatin (https://en.wikipedia.org/wiki/VAT_identification_number)
           type: string
           example: FI99999999
@@ -200,7 +200,7 @@ components:
         contact_list:
           nullable: true
           properties:
-            id: 
+            id:
               description: Contact list id
               type: integer
             name:
@@ -226,12 +226,12 @@ components:
           description: 35 customizable fields. All fields will be included even if they are empty.
           type: array
           items:
-            $ref: '#/components/schemas/OtherInfo'      
+            $ref: '#/components/schemas/OtherInfo'
 
     OrderProductField:
       description: Ordered product's field model
       properties:
-        id: 
+        id:
           type: integer
         name:
           type: string
@@ -280,7 +280,7 @@ components:
       properties:
         id:
           type: integer
-          example: 17347          
+          example: 17347
         invoice:
           description: Invoice related contact information
           properties:
@@ -339,7 +339,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderProduct'
-        voice_receipt_url: 
+        voice_receipt_url:
           description: Voice receipt's URL or null if no receipt
           type: string
           format: url
@@ -377,7 +377,7 @@ components:
           description: Orders's state. Can be null if state is not set.
           nullable: true
           properties:
-            id: 
+            id:
               type: integer
             name:
               type: string
@@ -385,13 +385,13 @@ components:
           description: 6 customizable fields. All fields will be included even if they are empty.
           type: array
           items:
-            $ref: '#/components/schemas/OtherInfo'      
+            $ref: '#/components/schemas/OtherInfo'
 
     Callback:
       properties:
         id:
           type: integer
-        phone: 
+        phone:
           description: Phone number that should be called
           type: string
           maxLength: 100
@@ -464,13 +464,13 @@ components:
           enum:
             - in
             - out
-        caller:
-          description: User who made the call
+        user:
+          description: Agent who made or answered the call
           properties:
             id:
               type: integer
             name:
-              type: string        
+              type: string
         answered:
           description: Was the call answered
           type: boolean
@@ -536,20 +536,21 @@ components:
                   enum:
                     - full-automatic
                     - semi-automatic
-                    - selectable
+                    - agent-selectable
                 allow_remove:
                   description: Whether to allow removing phone numbers during progressive call flow
                   type: boolean
                 skip_number_penalty:
                   description: Use waiting period before agent can select next customer in progressive calling. If next customer is selected too quickly then waiting period is increased.
                   type: boolean
+                # TODO: -> leadapp
                 preview_leadapp_url:
                   description: Contact preview LeadApp address
                   nullable: true
                   type: string
                   format: url
-                ring_time_limit:
-                  description: Maximum ringing time in seconds for progressive call without pause. (Next number in list is dialed after timeout). 0 = off 
+                ringing_time_limit:
+                  description: Maximum ringing time in seconds for progressive call without pause. (Next number in list is dialed after timeout). 0 = off
                   type: integer
                 select_result_on_remove:
                   description: Show call ending reason dialog when removing customer from list
@@ -585,7 +586,7 @@ components:
               description: Show agent contact list selector (agents can select a contact list from all lists assigned to the current campaign)
               type: boolean
             hide_delivery:
-              description:  Hide delivery address section from call dialog 
+              description:  Hide delivery address section from call dialog
               type: boolean
             default_primary_tab:
               # TODO: Not sure how this maps to new call dialog
@@ -599,7 +600,7 @@ components:
               description: Agent session timeout (maximum time that agent can be passive)
               type: integer
             voice_receipt_mandatory:
-              description: Whether voice receipt is mandatory before submitting an order or not 
+              description: Whether voice receipt is mandatory before submitting an order or not
               type: boolean
         recording:
           properties:
@@ -612,33 +613,39 @@ components:
         callbacks:
           properties:
             allow_delegation:
-              description: Agent can create and transfer callbacks to other agents 
+              description: Agent can create and transfer callbacks to other agents
               type: boolean
-            minimum_date: 
+            minimum_date:
               description: Minimum date allowed for new callbacks (inclusive)
               type: string
+              nullable: true
               format: date
-            maximum_date: 
+              example: "2019-01-01"
+            maximum_date:
               description: Maximum date allowed for new callbacks (inclusive)
               type: string
+              nullable: true
               format: date
-            minimum_time: 
+              example: "2019-01-31"
+            minimum_time:
               description: Minimum time of day allowed for new callbacks (inclusive)
               type: string
               format: time
-            maximum_time: 
-              description: Minimum time of day allowed for new callbacks (inclusive)
+              example: "08:00"
+            maximum_time:
+              description: Maximum time of day allowed for new callbacks (inclusive)
               type: string
               format: time
+              example: "16:00"
             allow_types:
               type: string
-              enum: 
+              enum:
                 - all
                 - private
                 - public
         predictive:
           properties:
-            automatic_answer:
+            force_automatic_answer:
               description: Automatic answer is forced to agents for predictive calls
               type: boolean
         b2b:
@@ -647,16 +654,16 @@ components:
               type: array
               items:
                 properties:
-                  id: 
+                  id:
                     type: integer
                   name:
                     type: string
         inbound:
           properties:
-            automatic_answer_queue:
+            force_automatic_answer_queue:
               description: Automatic answer is forced to agents for queue calls
               type: boolean
-            automatic_answer_direct:
+            force_automatic_answer_direct:
               description: Automatic answer is forced to agents for direct
               type: boolean
             blending:
@@ -700,7 +707,7 @@ components:
           type: array
           items:
             properties:
-              id: 
+              id:
                 type: integer
               name:
                 type: string
@@ -717,7 +724,7 @@ components:
             properties:
               id:
                 type: integer
-              name: 
+              name:
                 type: string
               weight:
                 type: integer
@@ -727,7 +734,7 @@ components:
           items:
             anyOf:
               - $ref: '#/components/schemas/ResultGroup'
-              - $ref: '#/components/schemas/Result'            
+              - $ref: '#/components/schemas/Result'
             discriminator:
               propertyName: object
 
@@ -751,15 +758,16 @@ components:
     ContactField:
       description: Campaign's contact field configuration
       properties:
-        id:
+        name:
           description: Field identifier
           type: string
           enum:
             - phone
             - ...
           example: phone
-        name:
-          description: Field's customized or localized name
+        label:
+          description: Field's customized name
+          nullable: true
           type: string
         type:
           description: Field's type. Define whether field is text or dropdown etc
@@ -774,11 +782,11 @@ components:
           type: array
           items:
             type: string
-        hidden:
-          description: Makes field invisible to agent
+        visible:
+          description: Whether field is visible to agent or not
           type: boolean
-        readonly:
-          description: Makes field non-editable
+        editable:
+          description: Whether agent can modify the field or not
           type: boolean
         validator:
           description: Field validator is an UI feature and enforce field's value to specific format before it can be used to create/modify an order.
@@ -801,7 +809,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/Result'         
+            $ref: '#/components/schemas/Result'
 
     Product:
       properties:
@@ -827,7 +835,7 @@ components:
           # NOTE: Fields will be automatically ordered in the right order
           items:
             properties:
-              id: 
+              id:
                 type: integer
               name:
                 type: string
@@ -847,7 +855,7 @@ components:
                 description: Predefined value(s) for field. Some types will only have single value.
                 type: array
                 items:
-                  type: string          
+                  type: string
 
     Phonebook:
       properties:
@@ -869,7 +877,7 @@ components:
           type: array
           items:
             properties:
-              id: 
+              id:
                 type: integer
               name:
                 type: string
@@ -937,7 +945,7 @@ components:
           type: array
           items:
             properties:
-              id: 
+              id:
                 type: integer
               filename:
                 type: string
@@ -1004,13 +1012,13 @@ components:
     Result:
       description: LeadDesk call result but only with data that Agent should need from it
       properties:
-        object: 
+        object:
           type: string
           example: result
         id:
           type: integer
           example: 1
-        name: 
+        name:
           type: string
           example: "Not selected"
         transfer:
