@@ -1,0 +1,1536 @@
+openapi: "3.0.0"
+info:
+  title: Leadesk agent Rest API spike
+  description: Study on what API resources to implement if LeadDesk Agent side should be made to work on top of Rest API
+  version: 0.0.1
+
+servers:
+  - url: https://spike-api.leaddesk.com
+
+paths:
+
+  /campaigns/{campaignId}/operations/next_contact:
+    post:
+      summary: Get next contact from work queue (releases existing contacts and locks the new contact to current user). Allowed only to agents.
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/campaignId'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+
+  /messaging/sms:
+    post:
+      summary: Send an SMS message
+      tags:
+        - must
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewSms'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+
+  /messaging/email:
+    post:
+      summary: Send an email message
+      description: "TODO: needs study on how to handle attachments effectively without passing them to browser all the time"
+      tags:
+        - must
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEmail'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+
+  /results/{resultId}/templates:
+    get:
+      summary: Get message templates attached to a result
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/resultId'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultTemplates'
+
+  /orders:
+    get:
+      summary: Get orders
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/fcampaign_id'
+        - $ref: '#/components/parameters/fcreated_at'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderBasic'
+    post:
+      summary: Create a new order
+      description: "- current code creates a dummy call if real call is not attached to an order. We should consider removing this dependency and instead fix all the places that depend on order having a call. API v1 already allows creating such orders.\n- How to separate machine vs api origin?\n - Current code updates the contact details of a call as well based on order data (param update_contact)\n - If call is the latest call then contact is removed from calling immediately and gets deal as ending reason.\n - order creation time can be based on call creation time. Check if this is truly needed.\n  - Do we allow order states always through the API and determine the visibility on UI based on the feature?\n - voice receipt recording name format?"
+      tags:
+        - must
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOrder'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+
+  /orders/{orderId}:
+    patch:
+      summary: Modify an order
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+        - $ref: '#/components/parameters/orderId'
+      requestBody:
+        description: changes
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOrder'
+      responses:
+        '204':
+          description: success
+    delete:
+      summary: Cancel an order
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+        - $ref: '#/components/parameters/orderId'
+      responses:
+        '204':
+          description: success
+
+  /calls/{callId}/contact:
+    post:
+      summary: Create a new contact for the call (can be done only if there isn't a contact already)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      requestBody:
+        description: new properties
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewContact'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+    patch:
+      # todo move to root
+      summary: Modify call's contact
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      requestBody:
+        description: changes
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewContact'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+
+  /contacts/{contactId}/operations/reserve:
+    post:
+      summary: Reserve a contact
+      description: "TODO: which agents are allowed to be set as owner?"
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                user_id:
+                  type: integer
+      responses:
+        '204':
+          description: success
+
+  /contacts/{contactId}/operations/release:
+    post:
+      summary: Release contact reservation
+      description: Agent can only release contacts reserved to him/her
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+      responses:
+        '204':
+          description: success
+
+  /contacts/{contactId}/operations/position:
+    post:
+      summary: Move contact's numbers into new position in contact list or campaign
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                numbers:
+                  type: string
+
+                position:
+                  type: string
+                  example: "123|first|last|50%"
+                scope:
+                  type: string
+                  example: "campaign|list"
+      responses:
+        '204':
+          description: success
+
+
+  /contacts/{contactId}:
+    get:
+      summary: Get all contact details including company information. (efficient way).
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+    patch:
+      summary: Modify contact
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewContact'
+      responses:
+        '204':
+          description: success
+
+  /contacts/{contactId}/numbers/{phoneId}/operations/finalize:
+    post:
+      summary: Finalize contact's phone number with an optional result. (aka next & remove)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/contactId'
+        - $ref: '#/components/parameters/phoneId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                result_id:
+                  type: integer
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+
+
+  /calls/{callId}/progress/ringing:
+    post:
+      summary: Set call into ringing state
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      responses:
+        '204':
+          description: success
+
+  /calls/{callId}/progress/disconnected:
+    post:
+      summary: Set call into disconnected state state (either from ringing, connected or start)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      responses:
+        '204':
+          description: success
+
+  /calls/{callId}/progress/connected:
+    post:
+      summary: Set call into connected state (from ringing or start)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                recording:
+                  type: string
+                  example: "134-CALL-sami.1-358408422598-20190405-112407"
+      responses:
+        '204':
+          description: success
+
+  /calls/{callId}/progress/finalize:
+    post:
+      summary: Finalize call (sets handling stop, sets comment, run result effect on contact, sends automatic messages, etc)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                result_id:
+                  type: integer
+                  example: 1245
+                TODO_affect_single_number_only:
+                  description: "TODO: What is the use case when we don't affect other numbers"
+                  type: boolean
+                  example: false
+                comment:
+                  type: string
+                  example: "call comment"
+      responses:
+        '204':
+          description: success
+
+  /calls:
+    get:
+      summary: "get calls. TODO: result filter is a bit nasty because it is currently text (not id) based"
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/fcreated_at'
+        - $ref: '#/components/parameters/fcampaign_id'
+        - $ref: '#/components/parameters/fresult'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Call'
+    post:
+      summary: Create/Start a new call. Use events to report the progress of the call
+      tags:
+        - must
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                number:
+                  type: string
+                  example: "+358123456789"
+                campaign_id:
+                  type: integer
+                  example: 1
+                contact_phone_id:
+                  description: TODO if defined do we need the number?!
+                  type: integer
+                  example: 1234
+                direction:
+                  type: string
+                  example: in|out
+                user_id:
+                  type: integer
+                  example: 543928692645
+                type:
+                  type: string
+                  example: auto|semi|manual|...
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+                  caller_id:
+                    type: string
+                    example: "+358111222333"
+
+  /calls/external:
+    post:
+      summary: Log external call into LeadDesk
+      tags:
+        - must
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                number:
+                  type: string
+                  example: "+358123456789"
+                answered:
+                  type: boolean
+                created_at:
+                  type: string
+                duration:
+                  description: seconds
+                  type: integer
+                campaign_id:
+                  type: integer
+                  example: 1
+                contact_phone_id:
+                  description: TODO if defined do we need the number?!
+                  type: integer
+                  example: 1234
+                direction:
+                  type: string
+                  example: in|out
+                user_id:
+                  type: integer
+                  example: 543928692645
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    type: integer
+                    example: 123
+
+  /me/password:
+    patch:
+      summary: change own password
+      tags:
+        - nice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                new:
+                  type: string
+                  example: yr4izbITSFrLxIW
+                old:
+                  type: string
+                  example: OsB1000aD6I013l
+      responses:
+        '204':
+          description: success
+
+  /me/settings:
+    get:
+      summary: Get user settings
+      tags:
+        - nice
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  voip:
+                    properties:
+                      unreachable:
+                        type: string
+                        example: hangup|voicemail|phone
+    patch:
+      summary: Modify user settings
+      tags:
+        - nice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                todo:
+                  type: string
+      responses:
+        '204':
+          description: success
+
+  /callbacks:
+    post:
+      tags:
+        - must
+      summary: Create a new callback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCallback'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+    get:
+      summary: get all callbacks
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackType'
+        - $ref: '#/components/parameters/callbackCampaign'
+        - $ref: '#/components/parameters/expireTime'
+        - $ref: '#/components/parameters/callbackUser'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NewCallback'
+
+  /callbacks/{callbackId}:
+    patch:
+      summary: Modify callback
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCallback'
+      responses:
+        '204':
+          description: success
+    get:
+      summary: Get callback information
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      responses:
+        '204':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  type:
+                    type: string
+                    example: "private|public"
+
+  /callbacks/{callbackId}/operations/assign:
+    patch:
+      summary: "Assign the callback to an agent as private callback (TODO: check which agents are suitabe)"
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                user_id:
+                  type: integer
+      responses:
+        '204':
+          description: success
+
+  /callbacks/{callbackId}/operations/publish:
+    patch:
+      summary: Make the callback public (stays in same campaign)
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      responses:
+        '204':
+          description: success
+
+  # Could we implement this into calling progress
+  /callbacks/{callbackId}/operations/lock_TODO:
+    patch:
+      summary: Lock the callback to current user to prevent other from working on it
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      responses:
+        '204':
+          description: success
+
+  /callbacks/{callbackId}/operations/unlock_TODO:
+    patch:
+      summary: Unlock the callback
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/callbackId'
+      responses:
+        '204':
+          description: success
+
+  /callbacks/expired/notification:
+    get:
+      summary: Get a summary of expired callbacks (how many private/public and how many of those require notification)
+      tags:
+        - nice
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  private:
+                    type: integer
+                    example: 1
+                  public:
+                    type: integer
+                    example: 7
+                  todo:
+                    type: string
+
+
+  /me/operations/available:
+    post:
+      tags:
+        - nice
+      summary: set user available for incoming calls (update available_from)
+      responses:
+        '204':
+          description: success
+    get:
+      tags:
+        - nice
+      summary: check own availability status
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  available:
+                    type: boolean
+                    example: true
+
+  /me/operations/unavailable:
+    post:
+      tags:
+        - nice
+      summary: set user unavailable for incoming calls
+      responses:
+        '204':
+          description: success
+
+  /calls/{id}:
+    get:
+      tags:
+        - nice
+      summary: get call details to be shown as history in call dialog
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: integer
+          required: true
+          description: call id
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  number:
+                    type: string
+                  todo:
+                    type: string
+
+  /contacts/{id}/history:
+    get:
+      tags:
+        - must
+      summary: get contact history
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: integer
+          required: true
+          description: contact id
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      properties:
+                        type:
+                          example: call|sms|email|comment|...
+                        todo:
+                          type: string
+
+  /campaigns/{id}/full:
+    get:
+      tags:
+        - must
+      summary: get full campaign information (most efficient)
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: integer
+          required: true
+          description: campaign id
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignFull'
+
+  /campaigns/{id}/products/full:
+    get:
+      tags:
+        - must
+      summary: "*IF* campaigns full request does not return products then this needs to be implemented. Will return full details of all the products and product groups in this campaign so that they can be rendered in the UI."
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: integer
+          required: true
+          description: campaign id
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  # TODO
+                  id:
+                    example: 1
+                  name:
+                    example: Campaign A
+
+  /campaigns/{campaignId}/contacts:
+    get:
+      summary: Get campaign contacts
+      tags:
+        - must
+      parameters:
+        - $ref: '#/components/parameters/campaignId'
+        - $ref: '#/components/parameters/finalized'
+        - $ref: '#/components/parameters/reserved'
+        - $ref: '#/components/parameters/contact_list'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      properties:
+                        # TODO
+                        id:
+                          example: 1
+                        name:
+                          example: John Smith
+
+  /campaigns:
+    get:
+      tags:
+        - already
+      summary: get campaigns available to agent
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      properties:
+                        id:
+                          example: 1
+                        name:
+                          example: Campaign A
+
+
+  /me/voip/iax:
+    get:
+      tags:
+        - must
+      summary: Get user's VoIP account
+      description: Get user VoIP account. This request might create the account if it's not already existing.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  hostname:
+                    type: string
+                    example: pbx-dev-1-4.leaddesk.com
+                  username:
+                    type: string
+                    example: "999800017801406"
+                  password:
+                    type: string
+                    example: "c+as8k134f$ijs/01"
+  /me/voip/sip:
+    get:
+      tags:
+        - must
+      summary: Get user's VoIP account
+      description: Get user VoIP account. This request might create the account if it's not already existing.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  hostname:
+                    type: string
+                    example: pbx-dev-1-4.leaddesk.com
+                  username:
+                    type: string
+                    example: "999800017801406"
+                  password:
+                    type: string
+                    example: "c+as8k134f$ijs/01"
+                  webrtc:
+                    type: string
+                    description: websocket interface if it's supported
+                    example: wss://pbx-dev-1-4.leaddesk.com:8089/ws
+                  stun:
+                    type: string
+                    example: "stun:stun.l.google.com:19302"
+                  turn:
+                    type: array
+                    items:
+                      properties:
+                        username:
+                          type: string
+                        credential:
+                          type: string
+                        urls:
+                          type: string
+                          example: "turn:global.turn.twilio.com:443?transport=tcp"
+
+  /me/activities/summary:
+    get:
+      summary: get own activities summary (defaults to today)
+      tags:
+        - nice
+      parameters:
+        - $ref: '#/components/parameters/fdate'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        campaign:
+                          properties:
+                            id:
+                              type: integer
+                            name:
+                              type: string
+                        duration:
+                          # seconds
+                          type: integer
+
+  /me:
+    get:
+      tags:
+        - must
+      summary: Get authenticated user properties
+      description: This only works if authentication has been done with a real user. {TODO} Extend properties based on need.
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    type: integer
+                    example: 65442936782982
+                  username:
+                    type: string
+                    example: john.smith
+                  name:
+                    type: string
+                    example: John Smith
+                  role:
+                    type: string
+                    example: agent
+                  email:
+                    type: string
+                    example: john.smith@company.xyz
+                  timezone:
+                    type: string
+                    example: "Europe/Helsinki"
+                  client:
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: Company XYZ
+                  language:
+                    properties:
+                      id:
+                        type: integer
+                        example: 4
+                      name:
+                        type: string
+                        example: Finnish
+                      code:
+                        type: string
+                        example: "fi-FI"
+                  campaign:
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: Campaign A
+                      active_contact_list:
+                        type: integer
+                        example: 2
+
+
+  /me/operations/active_campaign:
+    post:
+      summary: Set user's active campaign
+      tags:
+        - must
+      requestBody:
+        description: new properties
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                campaign_id:
+                  type: integer
+                  example: 1
+                contact_list_id:
+                  description: optional calling list to set as active list. List must exist in the campaign. This is only to store the information into persistent storage and won't have effect on other API calls.
+                  type: integer
+                  example: 2
+
+      responses:
+        '204':
+          description: Successful operation
+
+  /me/operations/activity:
+    post:
+      summary: Set user's current activity. This will end the previous activity or merge to it if it has lasted only for few seconds.
+      tags:
+        - must
+      requestBody:
+        description: new properties
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                campaign_id:
+                  type: integer
+                  example: 1
+                activity_id:
+                  type: integer
+                  example: 2
+      responses:
+        '204':
+          description: Successful operation
+
+
+  /languages:
+    get:
+      tags:
+        - nice
+      summary: Fetch languages
+      description: Get list of available languages that can be used in localization
+      responses:
+        '200':
+          description: Successful operation. Returns a collection
+          content:
+            application/json:
+              schema:
+                properties:
+                  collection:
+                    type: array
+                    items:
+                      properties:
+                        id:
+                          type: integer
+                          example: 4
+                        name:
+                          type: string
+                          example: 'Finnish'
+
+  /me/messages/legacy:
+    get:
+      tags:
+        - nice
+      summary: fetch user's active messages (group, office etc messages)
+      responses:
+        '200':
+          description: TODO
+          content:
+            application/json:
+              schema:
+                properties:
+                  todo:
+                    example: todo
+
+  /settings:
+    get:
+      tags:
+        - nice
+      summary: Get client settings {TODO}
+      description: Get list of client settings and their values. {TODO} requires planning on what features to return
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  b2b:
+                    $ref: '#/components/schemas/settingBoolean'
+                  currency:
+                    type: string
+                    example: "€|EUR|Euro - or some else format"
+
+  /companies:
+    post:
+      summary: Create a new company
+      description: "NOTICE! Current code also creates the contact at the same time. But companies are rarely created so it's not a big problem if user needs to make 2 api calls to create a new company and a contact to it"
+      tags:
+        - nice
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/genericIdObject'
+
+  /companies/{id}:
+    post:
+      summary: Modify a company
+      tags:
+        - nice
+      parameters:
+        - $ref: '#/components/parameters/companyId'
+      responses:
+        '204':
+          description: success
+
+  /phonebook:
+    get:
+      summary: get phonebook content
+      description: "How to separate phonebook numbers and available agents or do they need to be separated? What if we always return them."
+      tags:
+        - nice
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phonebook'
+
+components:
+  parameters:
+    contactId:
+      in: path
+      name: contactId
+      required: true
+      schema:
+        type: integer
+      description: contact id
+    resultId:
+      in: path
+      name: resultId
+      required: true
+      schema:
+        type: integer
+      description: result id
+    campaignId:
+      in: path
+      name: campaignId
+      required: true
+      schema:
+        type: integer
+      description: campaign id
+    companyId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+      description: company id
+    callId:
+      name: callId
+      in: path
+      schema:
+        type: integer
+      required: true
+      description: call id
+    orderId:
+      name: orderId
+      in: path
+      schema:
+        type: integer
+      required: true
+      description: order id
+    phoneId:
+      name: phoneId
+      in: path
+      schema:
+        type: integer
+      required: true
+      description: phone number id
+    callbackId:
+      name: callbackId
+      in: path
+      schema:
+        type: integer
+      required: true
+      description: order id
+    finalized:
+      name: finalized
+      in: query
+      schema:
+        type: boolean
+      required: false
+      description: include finalized contacts
+    reserved:
+      name: reserved
+      in: query
+      schema:
+        type: boolean
+      required: false
+      description: only show reserved contacts
+    contact_list:
+      name: contact_list
+      in: query
+      schema:
+        type: integer
+      required: false
+      description: limit to given contact list only
+    callbackType:
+      name: type
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter callbacks based on type
+    callbackCampaign:
+      name: campaign_id
+      in: query
+      schema:
+        type: integer
+      required: false
+      description: filter callbacks based on campaign
+    expireTime:
+      name: expires_at
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter callbacks based on expiry time
+    callbackUser:
+      name: user_id
+      in: query
+      schema:
+        type: integer
+      required: false
+      description: filter callbacks based on user
+    fcreated_at:
+      name: created_at
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter based on creation time
+    fcampaign_id:
+      name: campaign_id
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter based on campaign
+    fresult:
+      name: result
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter based on result
+    fdate:
+      name: date
+      in: query
+      schema:
+        type: string
+      required: false
+      description: filter based on date
+
+  schemas:
+    settingBoolean:
+      type: boolean
+      example: true
+    genericIdObject:
+      properties:
+        id:
+          type: integer
+          example: 524
+    companyStatus:
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Contact:
+      properties:
+        id:
+          type: integer
+          example: 123
+        phone_numbers:
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+        company:
+          properties:
+            todo:
+              type: string
+
+    NewContact:
+      properties:
+        name:
+          type: string
+        comment:
+          type: string
+
+    NewOrder:
+      properties:
+        invoice:
+          type: object
+        delivery:
+          type: object
+        products:
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+
+    OrderBasic:
+      properties:
+        created_at:
+          type: string
+        voice_receipt_url:
+          type: string
+        invoice:
+          properties:
+            phone:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+            company_name:
+              type: string
+            address:
+              type: string
+            city:
+              type: string
+            post_code:
+              type: string
+        campaign:
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        call:
+          properties:
+            comment:
+              type: string
+            recording_url:
+              type: string
+        state:
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        empty:
+          type: boolean
+
+    NewCallback:
+      properties:
+        phone:
+          type: string
+        comment:
+          type: string
+        type:
+          type: string
+          example: "public|private"
+        campaign_id:
+          type: integer
+        user_id:
+          type: integer
+        expires_at:
+          type: string
+        call_id:
+          type: integer
+
+    Phonebook:
+      properties:
+        numbers:
+          type: array
+          items:
+            properties:
+              number:
+                type: string
+              name:
+                type: string
+              group:
+                type: string
+        agents:
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              number:
+                type: string
+
+    NewSms:
+      properties:
+        to:
+          type: string
+        from:
+          type: string
+        message:
+          type: string
+        call_id:
+          type: integer
+
+    NewEmail:
+      properties:
+        to:
+          type: string
+        content:
+          type: string
+
+    ContactList:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    ResultTemplates:
+      type: array
+      items:
+        properties:
+          automatic:
+            type: boolean
+          name:
+            type: string
+    Call:
+      properties:
+        id:
+          type: integer
+        number:
+          type: string
+
+    CampaignFull:
+      properties:
+        # TODO: include global campaign settings as well
+        # "agent_create_private_callbacks_disabled":"0","agent_create_public_callbacks_disabled":"0","call_ending_iframe_probability":"0","call_ending_iframe_url":"https:\/\/login-1-staging.leaddesk.com\/beta\/sami\/dump.php","default_outbound_caller_id_id":"","external_url_views":""
+        id:
+          example: 1
+        name:
+          example: Campaign A
+        contact_lists:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactList'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Result'
+        b2b:
+          properties:
+            statuses:
+              type: array
+              items:
+                $ref: '#/components/schemas/companyStatus'
+
+
+    Result:
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Not selected"
+        finalize_contact:
+          type: boolean
+          example: true
+        finalize_company:
+          type: boolean
+          example: true
+        waiting_period:
+          type: integer
+          example: null
+        #"default_template_id": null,
+        #"automatic_report_sending": null,
+        #"visible": "yes",
+        #"waiting_period": "0",
+        #"calling_starts": "00:00:00",
+        #"calling_ends": "23:59:59",
+        #"move_to_list": null,
+        #"remove_company": "0",
+        #"retain_agent": "0",
+        #"parent_reason": null,
+        #"points": "0.000",
+        #"add_to_blacklist": "0",
+        #"blacklist_sponsor_ids": "0",
+        #"group_name": null,
+        #"campaign_internal_order": null,
+        #"secondary_waiting_period": "0",
+        #"repeat_waiting_period": "0",
+        #"info": "",
+        #"required_features": null,
+        #"transfer_target": null,
+        #"logical_name": "call_reason_not_selected",
+        #"options": null
