@@ -391,10 +391,16 @@ components:
       properties:
         id:
           type: integer
-        phone:
-          description: Phone number that should be called
-          type: string
-          maxLength: 100
+        phone_number:
+          properties:
+            id:
+              description: Phone number id if callback relates to a contact
+              type: integer
+              nullable: true
+            number:
+              description: Phone number that should be called
+              type: string
+              maxLength: 100
         comment:
           type: string
           maxLength: 65536
@@ -1045,3 +1051,4 @@ components:
                 anyOf:
                   - $ref: '#/components/schemas/SmsMessageTemplate'
                   - $ref: '#/components/schemas/EmailMessageTemplate'
+   
